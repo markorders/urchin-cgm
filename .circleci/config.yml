@@ -15,17 +15,15 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y python2 python3 libfreetype6-dev libpng-dev libjpeg-dev libffi-dev libssl-dev
       - run:
-          name: Install Pebble SDK
+          name: Install Pebble SDK via pip
           command: |
-            mkdir -p ~/pebble-dev
-            cd ~/pebble-dev
-            wget -q https://s3.amazonaws.com/assets.getpebble.com/pebble-tool/pebble-sdk-4.3-linux64.tar.bz2
-            tar xjf pebble-sdk-4.3-linux64.tar.bz2
-            echo 'export PATH=~/pebble-dev/PebbleSDK-3.14/bin:$PATH' >> ~/.bashrc
+            python3 -m pip install --upgrade pip setuptools
+            python3 -m pip install pebble-tool
+            mkdir -p ~/.pebble-sdk
+            pebble sdk install 3.14
       - run:
           name: Build Pebble app
           command: |
-            . ~/pebble-dev/PebbleSDK-3.14/pebble-sdk.sh
             pebble build
       - run:
           name: Archive build artifacts
