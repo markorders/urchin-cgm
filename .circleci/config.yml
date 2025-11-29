@@ -12,7 +12,7 @@ jobs:
             pebble build
       - run:
           name: Archive build artifacts
-          command: mkdir -p build_artifacts && cp release/urchin-cgm.pbw build_artifacts/ || true
+          command: mkdir -p build_artifacts && cp build/urchin-cgm.pbw build_artifacts/urchin-cgm.pbw || cp release/urchin-cgm.pbw build_artifacts/urchin-cgm.pbw || true
       - store_artifacts:
           path: build_artifacts
           destination: build
