@@ -1,0 +1,40 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/base:2023.03
+    environment:
+      PEBBLE_TOOL: 4.3
+      PEBBLE_SDK: 3.14
+    steps:
+      - checkout
+      - run:
+          name: Install Pebble SDK dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y python2 python3 libfreetype6-dev libpng-dev libjpeg-dev libffi-dev libssl-dev
+      - run:
+          name: Install Pebble SDK
+          command: |
+            mkdir -p ~/pebble-dev
+            cd ~/pebble-dev
+            wget -q https://s3.amazonaws.com/assets.getpebble.com/pebble-tool/pebble-sdk-4.3-linux64.tar.bz2
+            tar xjf pebble-sdk-4.3-linux64.tar.bz2
+            echo 'export PATH=~/pebble-dev/PebbleSDK-3.14/bin:$PATH' >> ~/.bashrc
+      - run:
+          name: Build Pebble app
+          command: |
+            . ~/pebble-dev/PebbleSDK-3.14/pebble-sdk.sh
+            pebble build
+      - run:
+          name: Archive build artifacts
+          command: mkdir -p build_artifacts && cp release/urchin-cgm.pbw build_artifacts/ || true
+      - store_artifacts:
+          path: build_artifacts
+          destination: build
+
+workflows:
+  build-and-deploy:
+    jobs:
+      - build
