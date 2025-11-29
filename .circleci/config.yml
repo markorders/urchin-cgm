@@ -7,6 +7,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Clean build directory
+          command: rm -rf build/ src/js/generated/ config/js/generated/
+      - run:
           name: Build Pebble app
           command: |
             pebble build
