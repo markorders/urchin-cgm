@@ -623,14 +623,19 @@ var data = function(c, maxSGVCount) {
         profileBasal = results[2];
 
       var entries = openAPSEntriesFromLastSuccessfulDevice(allEntries);
-      if (entries.length < 2) {
+      // Show IOB even with a single recent entry
+      if (entries.length < 1) {
         return {text: '-'};
       }
 
       var lastLoopTime = openAPSLoopTime(entries);
 
       var summary;
-      if (openAPSIsSuccess(entries)) {
+      // For single-entry case: try to extract iob without freshness check
+      if (entries.length === 1) {
+        var iobVal = openAPSIOB(entries);
+        summary = iobVal || '--';
+      } else if (openAPSIsSuccess(entries)) {
         var relativeTo = config.statusOpenAPSNetBasal ? profileBasal : undefined;
         var temp = openAPSTempBasal(entries, lastTemp, relativeTo, lastLoopTime);
         var iob = openAPSIOB(entries);
@@ -687,6 +692,7 @@ var data = function(c, maxSGVCount) {
       'basal': d.getActiveBasal,
       'pebbleiob': d.getPebbleIOB,
       'pebbleiobandcob': d.getPebbleIOBAndCOB,
+      'devicestatusiob': d.getDeviceStatusIOB,
       'loop': d.getLoopStatus,
       'openaps': d.getOpenAPSStatus,
       'customurl': d.getCustomUrl,
@@ -706,6 +712,53 @@ var data = function(c, maxSGVCount) {
     } else {
       return d.getNightscoutSGVsDateDescending(config);
     }
+  };
+
+  // Read IOB from devicestatus entries. Scans recent devicestatus records for
+  // common IOB locations (top-level `iob`, `openaps.iob`, or `uploader.iob`) and
+  // returns the most recent numeric value found. Useful when `/pebble` isn't
+  // available but devicestatus entries contain an IOB value.
+  d.getDeviceStatusIOB = function(config) {
+    var url = d.addTokenToUrl(config.nightscout_url + '/api/v1/devicestatus.json?count=' + openAPSStatusCache.maxSize, config.nightscout_token);
+    return d.getJSON(url).then(function(entries) {
+      if (!entries || !entries.length) {
+        return {text: '-'};
+      }
+
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i];
+        var foundIOB;
+
+        // top-level iob
+        if (e['iob'] !== undefined && !isNaN(parseFloat(e['iob']))) {
+          foundIOB = parseFloat(e['iob']);
+        }
+
+        // openaps.iob may be an object or an array (AMA-style)
+        if (foundIOB === undefined && e['openaps'] && e['openaps']['iob'] !== undefined) {
+          var oi = e['openaps']['iob'];
+          if (oi instanceof Array && oi.length && oi[0] && oi[0]['iob'] !== undefined) {
+            foundIOB = parseFloat(oi[0]['iob']);
+          } else if (oi['iob'] !== undefined) {
+            foundIOB = parseFloat(oi['iob']);
+          }
+        }
+
+        // uploader-specific iob
+        if (foundIOB === undefined && e['uploader'] && e['uploader']['iob'] !== undefined && !isNaN(parseFloat(e['uploader']['iob']))) {
+          foundIOB = parseFloat(e['uploader']['iob']);
+        }
+
+        if (foundIOB !== undefined && !isNaN(foundIOB)) {
+          var recency = e['created_at'] ? Math.round((Date.now() - new Date(e['created_at'])) / 1000) : 0;
+          return {text: roundOrZero(foundIOB) + ' U', recency: recency};
+        }
+      }
+
+      return {text: '-'};
+    }).catch(function() {
+      return {text: '-'};
+    });
   };
 
   function filterKeys(objs, keys) {

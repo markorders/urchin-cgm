@@ -65,6 +65,10 @@
       // v0.0.11: IOB from /pebble now handles both Care Portal and devicestatus IOB
       config.statusContent = 'pebbleiob';
     }
+    if (config.statusContent === 'pebbleiob' && config.nightscout_url) {
+      // Prefer devicestatusiob which reads directly from devicestatus entries
+      config.statusContent = 'devicestatusiob';
+    }
     // v0.0.12: new layout properties
     if (config.customLayout) {
       config.customLayout.connStatusLoc = config.customLayout.connStatusLoc || c.DEFAULT_CONFIG.customLayout.connStatusLoc;
